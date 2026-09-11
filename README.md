@@ -1,86 +1,81 @@
 # tipSip engineering showcase
 
-This repository is a focused engineering snapshot of selected systems from **tipSip**, a React Native / Expo application that includes private, account-scoped location history and mobility-aware product experiences.
+tipSip is a React Native / Expo mobile application with private, account-scoped location history and mobility-oriented features. Its location subsystem preserves observations across foreground/background transitions, offline periods, and process recreation.
 
-The showcase is intended for university CS/ECE faculty, undergraduate research supervisors, and technical reviewers. It emphasizes evidence modeling, lifecycle correctness, durable delivery contracts, and failure-first regression testing. It is not a distributable copy of the mobile application and does not connect to any live service.
+This repository contains a curated, runnable subset of the private tipSip codebase for technical and academic review: selected production TypeScript modules plus synthetic regression tests. Application UI, infrastructure, and service integrations remain private.
 
-> The canonical product repository is private. This repository is a sanitized public showcase containing selected implementation and architecture material for technical and academic review.
+## What the selected code covers
 
-## Project status
-
-The included TypeScript modules are real implementation selected from an actively developed private application. The selection is independently type-checkable and has a runnable synthetic regression suite. Native UI, credentials, live provider adapters, concrete SQLite bindings, backend services, deployment configuration, and private product data are intentionally omitted.
-
-This repository should not be interpreted as a production release, a deployed service, or the complete tipSip codebase.
-
-## Implemented capabilities represented here
-
-- Strict normalization and acceptance of native location observations
-- Serialized foreground/background acquisition ownership
-- Account-partitioned durable outbox and acknowledgement-shadow contracts
-- Exact local/remote observation reconciliation
-- Stable identity across equivalent timestamp serializations
-- Sparse-location and measured-motion stay confirmation
-- Process-recreation reconstruction without fabricated evidence
-- Route segmentation, temporal gaps, and accuracy-aware stay projection
-- Fail-closed authority and account-isolation boundaries
-- Deterministic regression coverage for lifecycle, persistence, continuity, and real visit separation
-
-## Architecture overview
-
-```mermaid
-flowchart LR
-    Native[Native location callback] --> Normalize[Canonical normalization]
-    Normalize --> Accept[Freshness and accuracy acceptance]
-    Accept --> Ownership[Single lifecycle owner]
-    Accept --> Durable[Durable outbox contract]
-    Durable --> Reconcile[Local / acknowledged / remote reconciliation]
-    Reconcile --> Stay[Account-scoped stay authority]
-    Stay --> Day[Selected-day event projection]
-    Day --> Product[Activity and person-detail presentation]
-```
-
-Only the provider-neutral core through selected-day event projection is included. Native and remote implementations remain behind the interfaces visible in the source.
-
-## Technical stack
-
-- TypeScript 5.9
-- React Native / Expo in the canonical private application
-- Node's built-in test runner with `tsx` for this isolated showcase
-- Interface-driven persistence and read-authority boundaries
-- Immutable, discriminated-union domain models
+- **Location acceptance:** normalizes provider callbacks once, then checks coordinates, freshness, future skew, and accuracy.
+- **Foreground/background handoff:** serializes lifecycle transitions so only one continuous acquisition authority can remain active.
+- **Durable delivery:** models an account-partitioned outbox with chronological reads, retry recovery, acknowledgement before retirement, and bounded capacity.
+- **Local/remote reconciliation:** treats pending, recently acknowledged, and authorized remote representations as the same observation when their canonical identity matches, even if timestamp serialization or server row IDs differ.
+- **Stay reconstruction:** distinguishes durable evidence from presentation, confirms stays conservatively, and rebuilds state after process recreation without inventing GPS points.
+- **Mobility projection:** derives movement, stays, temporal gaps, and selected-day events while preserving accuracy and unavailable-data boundaries.
+- **Regression testing:** exercises lifecycle ownership, account isolation, persistence semantics, reconciliation, sparse evidence, movement, visit separation, and day projection with synthetic fixtures.
 
 ## Selected engineering challenges
 
 ### One acquisition authority across lifecycle transitions
 
-`LocationCaptureOwnershipCoordinator` serializes transitions and applies stop-before-start ordering. Generation checks prevent stale asynchronous completions from reviving an obsolete foreground or background owner.
+**Problem:** asynchronous lifecycle transitions can overlap, allowing a stale completion to revive an obsolete acquisition owner.
+
+**Design decision:** `LocationCaptureOwnershipCoordinator` serializes transitions, stops before starting, and rejects stale completions through generation checks.
 
 ### Durable evidence without fabricated location
 
-Stay inference consumes only observations that have crossed the durable boundary. Read-time duration may advance, but timer ticks never create synthetic GPS evidence or persistent history rows.
+**Problem:** display and retry timers must not become synthetic observations.
 
-### Identity through offline reconciliation
+**Design decision:** stay inference consumes only observations that have crossed the durable boundary. Read-time duration may advance, but timer ticks never create GPS evidence or persistent history rows.
 
-Client, acknowledgement-shadow, and server representations use a provider-neutral identity based on account, normalized capture instant, and coordinate. Server row identifiers and timestamp spelling do not define the logical observation.
+### Stable identity through offline reconciliation
 
-### Process-recreation continuity
+**Problem:** local, acknowledgement-shadow, and server records may encode one observation with different row IDs or timestamp spellings.
 
-The stay authority can rebuild from durable history while retaining conservative currentness rules. An exact live callback may prove current-process continuity without incrementing evidence when the same observation was reconstructed first.
+**Design decision:** reconciliation identifies observations by account, normalized capture instant, and coordinate—not transport-specific identifiers.
 
-See [Architecture](docs/architecture.md), [Location history](docs/location-history.md), [Privacy and security](docs/privacy-and-security.md), and [Testing](docs/testing.md) for more detail.
+### Continuity after process recreation
+
+**Problem:** durable history can reconstruct a visit but cannot prove it remains current in a new process.
+
+**Design decision:** the stay authority rebuilds conservatively. An exact durable callback can prove continuity without adding duplicate evidence.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Native location callback] --> B[Canonical observation]
+    B --> C[Freshness and accuracy gate]
+    C --> D[Foreground / background owner]
+    C --> E[Account-scoped durable outbox]
+    E --> F[Local / acknowledged / remote reconciliation]
+    F --> G[Stay evidence authority]
+    G --> H[Route and selected-day projection]
+    H --> I[Activity / Person Detail presentation]
+```
+
+Acquisition is separate from map rendering; canonical observations are separate from presentation. Timers never generate durable evidence, and current-stay authority remains distinct from historical projection.
+
+The provider-neutral core through selected-day projection is included. Native acquisition, concrete storage, authorized remote reads, maps, and presentation remain behind omitted integration boundaries.
+
+## Technical stack
+
+- **Canonical application:** React Native / Expo and TypeScript.
+- **Public subset:** selected TypeScript domain modules, type-checked with TypeScript 5.9 and tested with Node's test runner and `tsx`.
+- **Design:** interface-driven persistence and read-authority boundaries with immutable, discriminated-union domain models.
 
 ## Repository structure
 
-```text
-shared/planning/                    Geodesic distance dependency used by mobility logic
-src/features/locationHistory/       Canonical domain, lifecycle, durability, and projection logic
-src/lib/                            Location normalization and supporting policies
-src/types/                          Shared product-domain types required by the selected slice
-tests/                              Sanitized, synthetic invariant tests
-docs/                               Architecture, privacy, testing, and provenance notes
-```
+| Path | Purpose |
+| --- | --- |
+| `src/features/locationHistory/` | Location domain, lifecycle, durability, inference, and projection logic |
+| `src/lib/` | Observation normalization, sampling, distance, and supporting policies |
+| `src/types/` | Focused coordinate type required by the selected modules |
+| `shared/planning/` | Included geodesic distance policy used by mobility logic |
+| `tests/` | Synthetic invariant and regression tests |
+| `docs/` | Architecture, history, privacy, testing, and provenance notes |
 
-## Local setup
+## Run the included checks
 
 Requirements: a current Node.js LTS release and npm.
 
@@ -89,27 +84,42 @@ npm ci
 npm run check
 ```
 
-No environment variables, provider accounts, native SDKs, simulators, or network services are required by the tests.
+No environment variables, provider accounts, native SDKs, simulators, databases, or network services are required.
 
-## Testing strategy
+## Testing approach
 
-The public suite exercises production modules using clearly synthetic accounts, timestamps, and coordinates. It covers canonical normalization, lifecycle ownership, acknowledgement-before-retirement behavior, timestamp equivalence, account isolation, ongoing stay continuity, true movement, long evidence gaps, and selected-day projection.
+The public suite runs 11 tests against selected production modules using synthetic accounts, fixed timestamps, and generic coordinates. It covers canonical acceptance, lifecycle ownership, outbox behavior, acknowledgement-before-retirement, timestamp equivalence, account isolation, conservative stay reconstruction, movement and gap separation, and selected-day projection.
 
-The canonical project uses a broader failure-first regression workflow: an owner-visible invariant is first represented by a deterministic failing test, the earliest broken boundary is identified, and the smallest domain repair is then validated against inherited suites.
+The broader private development workflow is failure-first:
 
-## Privacy and security design
+1. Express an owner-visible invariant as a deterministic failing test.
+2. Locate the earliest broken acquisition, durability, identity, authority, or projection boundary.
+3. Apply a bounded repair at that boundary.
+4. Rerun the focused case and inherited regression suites.
 
-The selected code keeps raw evidence, derived state, and presentation separate. Account identity is checked at read, durable storage, reconciliation, and stay-authority boundaries. The showcase contains no live endpoints, API keys, test accounts, residential data, screenshots, service configuration, or Git history.
+## Privacy and security boundaries
 
-## Limitations and intentionally omitted components
+The selected code keeps raw evidence, derived state, and presentation separate. Account identity is checked at read, durable storage, reconciliation, and stay-authority boundaries. Public fixtures contain synthetic identities, times, and coordinates.
 
-- No complete React Native application shell or UI assets
-- No native iOS/Android projects or signing configuration
-- No concrete SQLite/Keychain/SecureStore bindings
-- No Supabase schema, migrations, credentials, or service-role code
-- No Railway/EAS/deployment configuration
-- No live map, geocoding, routing, payment, notification, or AI provider adapters
-- No production backend topology or private operational documents
-- No real user, device, friend, location, address, or diagnostic data
+The canonical application repository remains private. The provenance and sanitization process is documented in [Provenance and sanitization](docs/provenance-and-sanitization.md).
 
-The interfaces and domain logic are included to show how those omitted boundaries are constrained; the omitted integrations are not replaced with fictional live services.
+## Deliberate scope limits
+
+This repository is an independently testable engineering subset, not the complete mobile application or a deployed service. It does not contain:
+
+- the React Native application shell, UI source, or assets;
+- native iOS/Android projects or signing material;
+- concrete SQLite, Keychain, or SecureStore integrations;
+- private backend or Supabase infrastructure;
+- map, geocoding, routing, payment, notification, or AI provider adapters;
+- production data, private fixtures, or operational documents.
+
+No omitted integration is replaced with a fictional live service. The included interfaces show the constraints those private boundaries must satisfy.
+
+## Further technical notes
+
+- [Architecture](docs/architecture.md)
+- [Location-history model](docs/location-history.md)
+- [Testing strategy](docs/testing.md)
+- [Privacy and security](docs/privacy-and-security.md)
+- [Provenance and sanitization](docs/provenance-and-sanitization.md)

@@ -1,6 +1,6 @@
 # tipSip engineering showcase
 
-tipSip is a React Native / Expo mobile application with private, account-scoped location history and mobility-oriented features. Its location subsystem preserves observations across foreground/background transitions, offline periods, and process recreation.
+tipSip is a React Native and TypeScript mobile application with private, account-scoped location history and mobility-oriented features. Its location subsystem preserves observations across foreground/background transitions, offline periods, and process recreation.
 
 This repository contains a curated, runnable subset of the private tipSip codebase for technical and academic review: selected production TypeScript modules plus synthetic regression tests. Application UI, infrastructure, and service integrations remain private.
 
@@ -60,9 +60,10 @@ The provider-neutral core through selected-day projection is included. Native ac
 
 ## Technical stack
 
-- **Canonical application:** React Native / Expo and TypeScript.
+- **Canonical application:** React Native and TypeScript.
 - **Public subset:** selected TypeScript domain modules, type-checked with TypeScript 5.9 and tested with Node's test runner and `tsx`.
 - **Design:** interface-driven persistence and read-authority boundaries with immutable, discriminated-union domain models.
+- **Mobile tooling:** Expo tooling for development, builds, and native integration workflows.
 
 ## Repository structure
 

@@ -1,0 +1,17 @@
+{
+  "name": "tipsip-showcase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sanitized engineering showcase of selected tipSip mobility and location-history systems.",
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "tsx": "4.23.1",
+    "typescript": "5.9.2"
+  }
+}
